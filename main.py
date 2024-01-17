@@ -29,7 +29,7 @@ if __name__=="__main__":
     filename="ds_salaries new.csv"
     categorical_features=['work_year', 'experience_level', 'employment_type', 'job_title', 'employee_residence',
     'remote_ratio', 'company_location', 'company_size']
-    dataset=pd.read_csv(filename).drop(['salary','salary_currency'],axis=1)
+    dataset=pd.read_csv(filename).drop(['salary','salary_currency'],axis=1).drop_duplicates()
     factor=1.5
     print(dataset.shape)
     for col in dataset.columns:
@@ -49,24 +49,25 @@ if __name__=="__main__":
     # Setting up the dataset: normalize y, make the categorical features of X into numerical ones (by get_dummies)
     # and then split and normalize also X
     y=dataset['salary_in_usd']
-    y_mean=np.mean(y)
-    y_std=np.std(y)
-    y=np.array((y-y_mean)/y_std)
     i=1
     X=pd.get_dummies(dataset,columns=categorical_features)
     scaler=StandardScaler()
-    X_std=scaler.fit_transform(X)
-    X_train,X_test,Y_train,Y_test=train_test_split(X,y,test_size=0.2,random_state=42)
-    X_train=scaler.fit_transform(X_train)
-    X_test=scaler.transform(X_test)
+    X_train,X_test,y_train,y_test=train_test_split(X,y,test_size=0.2,random_state=42)
+    X_train_std=scaler.fit_transform(X_train)
+    X_test_std=scaler.transform(X_test)
+    y_mean=np.mean(y_train)
+    y_std=np.std(y_train)
+    y_train_std=np.array((y_train-y_mean)/y_std)
+    y_test_std=np.array((y_test-y_mean)/y_std)
+    y=np.array((y-y_mean)/y_std)
     # Set the parameters
     input_size=X.shape[1]
     hidden_sizes=[5,3]
     # Create the method, define the loss function and the optimizer (tells your model how to update its internal parameters to best lower the loss)
-    X_train_std=torch.from_numpy(X_train).float().to(device)
-    X_test_std=torch.from_numpy(X_test).float().to(device)
-    Y_train_std=torch.from_numpy(Y_train).float().to(device)
-    Y_test_std=torch.from_numpy(Y_test).float().to(device)
+    X_train_std=torch.from_numpy(X_train_std).float().to(device)
+    X_test_std=torch.from_numpy(X_test_std).float().to(device)
+    y_train_std=torch.from_numpy(y_train_std).float().to(device)
+    y_test_std=torch.from_numpy(y_test_std).float().to(device)
     final_test_loss={}
     final_distances={}
     for lri in [0.1,0.01,0.005,0.001,0.0001]:
@@ -82,7 +83,7 @@ if __name__=="__main__":
             model.train()
             y_pred=model(X_train_std)
             # calculate the loss for the iteration
-            loss=loss_func(y_pred,Y_train_std)
+            loss=loss_func(y_pred,y_train_std)
             # compute loss gradients for the parameters
             loss.backward()
             # update the parameters on the computed gradients
@@ -95,7 +96,7 @@ if __name__=="__main__":
             model.eval()
             with torch.inference_mode():
                 test_pred=model(X_test_std)
-                test_loss=loss_func(test_pred,Y_test_std)
+                test_loss=loss_func(test_pred,y_test_std)
                 test_loss_history.append(test_loss.to('cpu'))
             loss_history.append(loss.to('cpu'))
         with torch.no_grad():
