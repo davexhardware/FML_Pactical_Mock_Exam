@@ -59,7 +59,6 @@ if __name__=="__main__":
     y_std=np.std(y_train)
     y_train_std=np.array((y_train-y_mean)/y_std)
     y_test_std=np.array((y_test-y_mean)/y_std)
-    y=np.array((y-y_mean)/y_std)
     # Set the parameters
     input_size=X.shape[1]
     hidden_sizes=[5,3]
